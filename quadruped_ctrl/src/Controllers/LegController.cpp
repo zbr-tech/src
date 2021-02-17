@@ -15,6 +15,7 @@
 
 #include <fstream>
 #include <vector>
+#include <stdio.h>
 /*!
  * Zero the leg command so the leg will not output torque
  */
@@ -142,6 +143,17 @@ void LegController<T>::updateCommand(LegCommand* legCommand,
 
     //计算期望关节角度
     computeLegIK(_quadruped, commands[leg].pDes, &(commands[leg].qDes), leg);
+    ///////add by shimizu
+    // std::cout << "w"<<std::endl;
+    // std::cout<< datas[leg].qd<<std::endl;
+    // std::cout << datas[leg].J.inverse()*datas[leg].v << std::endl;
+    // std::cout << "J"<<std::endl;
+    // std::cout<<datas[leg].J<<std::endl;
+    // std::cout << datas[leg].J.inverse() << std::endl;
+    commands[leg].qdDes = datas[leg].J.inverse() * commands[leg].vDes;
+    // std::cout << "cal2" << std::endl;
+    // std::cout <<  datas[leg].q << std::endl;
+
     if (leg == 1 || leg == 3) {
       legCommand->tau_abad_ff[leg] =
           1*crtlParam(2) * (0.0 - datas[leg].q(0)) -
@@ -251,6 +263,17 @@ void computeLegJacobianAndPosition(Quadruped<T>& quad, Vec3<T>& q, Mat3<T>* J,
     p->operator()(2) =
         (l1 + l4) * sideSign * s1 - l3 * (c1 * c23) - l2 * c1 * c2;
   }
+
+
+//check
+// Vec3<T> q_cal;
+//   computeLegIK(quad, *p, &q_cal, leg );
+// std::cout << "in q" <<std::endl;
+// std::cout << q <<std::endl;
+// std::cout<<"out q" << std::endl;
+// std::cout<<q_cal << std::endl;
+
+
 }
 
 template void computeLegJacobianAndPosition<double>(Quadruped<double>& quad,
@@ -282,18 +305,27 @@ void computeLegIK(Quadruped<T>& quad, Vec3<T>& pDes, Vec3<T>* qDes, int leg) {
       D = -0.99999;
     }
   }
-
-  T gamma = acos(-D); //atan2(-sqrt(1 - D * D), D);
-  T tetta = -atan2(pDes[2], pDes[1]) -
-            atan2(sqrt(pDes[1] * pDes[1] + pDes[2] * pDes[2] - l1 * l1),
-                  sideSign * l1);
+  ///////// rewrite by shimizu
+  T gamma = acos(D); //atan2(-sqrt(1 - D * D), D);
+  T tetta = atan2(sqrt(pDes[1] * pDes[1] + pDes[2] * pDes[2] - l1 * l1),sideSign *l1) +
+             atan2(pDes[2], pDes[1]) ;
   T alpha =
       atan2(pDes[0], sqrt(pDes[1] * pDes[1] + pDes[2] * pDes[2] - l1 * l1)) -
       atan2(l3 * sin(gamma), l2 + l3 * cos(gamma));
 
-  qDes->operator()(0) = -tetta;
+  qDes->operator()(0) = tetta;
   qDes->operator()(1) = alpha;
   qDes->operator()(2) = gamma;
+///// check this function
+//  Mat3<T> J2;
+//  Vec3<T> p2;
+// computeLegJacobianAndPosition<T>(quad,*qDes,&J2,&p2,leg);
+// std::cout<<"pDes,p_cal"<<std::endl;
+// std::cout << pDes<<std::endl;
+// std::cout << p2<<std::endl;
+// std::cout << "qDes" << std::endl;
+// std::cout << *qDes << std::endl;
+/////////////////////////
 }
 
 // template <typename T>

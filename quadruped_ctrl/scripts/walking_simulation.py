@@ -32,14 +32,15 @@ robot_height = 0.30
 motor_id_list = [0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14]
 init_new_pos = [0.0, -0.8, 1.6, 0.0, -0.8, 1.6, 0.0, -0.8, 1.6, 0.0, -0.8, 1.6,
                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-
+###### add by shimizu
+skip_num =5
 
 class StructPointer(ctypes.Structure):
     _fields_ = [("eff", ctypes.c_double * 12)]
 
 class ZebraPointer(ctypes.Structure):
-    _fields_ = [("position", ctypes.c_double * 12),
-    ("kp", ctypes.c_double * 12),
+    _fields_ = [("position", ctypes.c_double * 12),("velocity", ctypes.c_double * 12),
+    ("kp", ctypes.c_double * 12),("kd", ctypes.c_double * 12),
     ("effort", ctypes.c_double * 12)]
 
 def convert_type(input):
@@ -200,7 +201,7 @@ def reset_robot():
     for j in range(12):
         p.resetJointState(boxId, motor_id_list[j], init_new_pos[j], init_new_pos[j+12])
     cpp_gait_ctrller.init_controller(convert_type(
-        freq), convert_type([stand_kp, stand_kd, joint_kp, joint_kd]))
+        freq/skip_num), convert_type([stand_kp, stand_kd, joint_kp, joint_kd]))
 
     for _ in range(10):
         p.stepSimulation()
@@ -216,7 +217,7 @@ def reset_robot():
     cpp_gait_ctrller.set_robot_mode(convert_type(1))
     for _ in range(200):
         run()
-        p.stepSimulation
+        # p.stepSimulation()
     cpp_gait_ctrller.set_robot_mode(convert_type(0))
 
 
@@ -317,8 +318,16 @@ def init_simulator():
 
 skip_count=0
 old_tau=0
+tau =[]
+imu_data=0
+leg_data=0
+base_pos=0
 def run():
+    global skip_count, tau, imu_data, leg_data, base_pos
     # get data from simulator
+    # if skip_count%skip_num== 0:
+        # print("in", skip_count)
+        
     imu_data, leg_data, base_pos = get_data_from_sim()
 
     #pub msg
@@ -326,46 +335,66 @@ def run():
     pub_imu_msg(imu_data)
 
     # call cpp function to calculate mpc tau
-    
-    tau = cpp_gait_ctrller.toque_calculator(convert_type(
-        imu_data), convert_type(leg_data))
-
     ### add by shimizu
     # tau_val = [tau.contents.eff[i] for i in range(N_Motors)]
 
-    # global skip_count
+    
     # global old_tau
-    # skip_num = 10
     # if skip_count%skip_num!=0:
     #     tau_val=old_tau
     # old_tau = tau_val
-    # skip_count+=1
+    
     # KP = 20
-    joint_pointer = cpp_gait_ctrller.get_zebra_joint_control()
-    for i in range(N_Motors):
-        joint_control.position[i] = joint_pointer.contents.position[i]
-        joint_control.kp[i] = joint_pointer.contents.kp[i] / 100
-        joint_control.effort[i] = joint_pointer.contents.effort[i]
-    # pub_zebra_ctrl.publish(joint_control)
+    if skip_count%skip_num== 0:
+    
+        tau = cpp_gait_ctrller.toque_calculator(convert_type(
+        imu_data), convert_type(leg_data))
+        tau_val = [tau.contents.eff[i] for i in range(N_Motors)]
 
-    # mcp_force = [joint_control.kp[i] *  (joint_control.position[i]- leg_data[i]) + joint_control.effort[i] for i in range(N_Motors)]
+        joint_pointer = cpp_gait_ctrller.get_zebra_joint_control()
+        for i in range(N_Motors):
+            joint_control.position[i] = joint_pointer.contents.position[i]
+            joint_control.velocity[i] = joint_pointer.contents.velocity[i]
+            joint_control.kp[i] = joint_pointer.contents.kp[i]/1000
+            joint_control.kd[i] = joint_pointer.contents.kd[i]/10
+            joint_control.effort[i] = joint_pointer.contents.effort[i]
+    skip_count+=1
+    # pub_zebra_ctrl.publish(joint_control)
+    # print("rad")
+    # print(joint_control.kp)
+    # print(joint_control.position)
+    # print(leg_data[:12])
+    mcp_force = [joint_control.kp[i] *  (joint_control.position[i]- leg_data[i])
+     + joint_control.kd[i] *  (joint_control.velocity[i]- leg_data[i+N_Motors])
+     +joint_control.effort[i] for i in range(N_Motors)]
+    # print(joint_control.velocity)
+    # print(leg_data[12:])
     # print(mcp_force[0], tau.contents.eff[0])
     # print("target")
-    # print(joint_control.kp)
+
     # print(mcp_force)
     # print(tau.contents.eff[:12])
+    # p.setJointMotorControlArray(bodyIndex=boxId,
+    #                             jointIndices=motor_id_list,
+    #                             controlMode=p.POSITION_CONTROL,
+    #                             targetPositions=joint_control.position)
+    p.setJointMotorControlArray(bodyUniqueId=boxId,
+                                jointIndices=motor_id_list,
+                                controlMode=p.TORQUE_CONTROL,
+                                forces=mcp_force)
     # p.setJointMotorControlArray(bodyUniqueId=boxId,
     #                             jointIndices=motor_id_list,
     #                             controlMode=p.TORQUE_CONTROL,
-    #                             forces=mcp_force)
+    #                             forces=tau_val)
+
     ##########################
 
 
     # set tau to simulator
-    p.setJointMotorControlArray(bodyUniqueId=boxId,
-                                jointIndices=motor_id_list,
-                                controlMode=p.TORQUE_CONTROL,
-                                forces=tau.contents.eff)
+    # p.setJointMotorControlArray(bodyUniqueId=boxId,
+    #                             jointIndices=motor_id_list,
+    #                             controlMode=p.TORQUE_CONTROL,
+    #                             forces=tau.contents.eff)
 
     # reset visual cam
     # p.resetDebugVisualizerCamera(2.5, 45, -30, base_pos)

@@ -21,7 +21,7 @@
 #include "calculateTool.h"
 
 ////add by shimizu
-#include <zebra_msgs/ZebraJointControl.h>
+// #include <zebra_msgs/ZebraJointControl.h>
 
 struct JointEff {
   double eff[12];
@@ -30,8 +30,11 @@ struct JointEff {
 //// add by shimizu
 struct Zebra{
   double position[12];
+  double velocity[12];
   double kp[12];
+  double kd[12];
   double effort[12];
+
 };
 
 class GaitCtrller {
@@ -126,7 +129,9 @@ Zebra* get_zebra_joint_control(){
     for(int i = 0; i < 3; i++){
       int n = 3*leg + i;
   joint_control.position[n]=command.qDes[i];
+  joint_control.velocity[n] = command.qdDes[i];
   joint_control.kp[n]=command.kpCartesian(0,0);
+  joint_control.kd[n]=command.kdCartesian(0,0);
   joint_control.effort[n]=command.tauFeedForward[i] + legTorque[i];
   }
   }
