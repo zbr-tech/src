@@ -33,7 +33,7 @@ motor_id_list = [0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14]
 init_new_pos = [0.0, -0.8, 1.6, 0.0, -0.8, 1.6, 0.0, -0.8, 1.6, 0.0, -0.8, 1.6,
                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 ###### add by shimizu
-skip_num =5
+skip_num =1
 
 class StructPointer(ctypes.Structure):
     _fields_ = [("eff", ctypes.c_double * 12)]
@@ -378,23 +378,19 @@ def run():
     #                             jointIndices=motor_id_list,
     #                             controlMode=p.POSITION_CONTROL,
     #                             targetPositions=joint_control.position)
-    p.setJointMotorControlArray(bodyUniqueId=boxId,
-                                jointIndices=motor_id_list,
-                                controlMode=p.TORQUE_CONTROL,
-                                forces=mcp_force)
     # p.setJointMotorControlArray(bodyUniqueId=boxId,
     #                             jointIndices=motor_id_list,
     #                             controlMode=p.TORQUE_CONTROL,
-    #                             forces=tau_val)
+    #                             forces=mcp_force)
 
     ##########################
 
 
     # set tau to simulator
-    # p.setJointMotorControlArray(bodyUniqueId=boxId,
-    #                             jointIndices=motor_id_list,
-    #                             controlMode=p.TORQUE_CONTROL,
-    #                             forces=tau.contents.eff)
+    p.setJointMotorControlArray(bodyUniqueId=boxId,
+                                jointIndices=motor_id_list,
+                                controlMode=p.TORQUE_CONTROL,
+                                forces=tau.contents.eff)
 
     # reset visual cam
     # p.resetDebugVisualizerCamera(2.5, 45, -30, base_pos)

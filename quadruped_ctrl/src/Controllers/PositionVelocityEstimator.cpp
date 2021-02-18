@@ -119,12 +119,10 @@ void LinearKFPositionVelocityEstimator<T>::run() {
     Vec3<T> ph = quadruped.getHipLocation(i);  // hip positions relative to CoM
 
     // hw_i->leg_controller->leg_datas[i].p;
-    Vec3<T> p_rel = ph + this->_stateEstimatorData.legControllerData[i]
-                             .p;  //足端位置在机身坐标系中
+    Vec3<T> p_rel = ph + this->_stateEstimatorData.legControllerData[i].p;  //足端位置在机身坐标系中
 
     // hw_i->leg_controller->leg_datas[i].v;
-    Vec3<T> dp_rel = this->_stateEstimatorData.legControllerData[i]
-                         .v;  //足端速度在机身坐标系
+    Vec3<T> dp_rel = this->_stateEstimatorData.legControllerData[i].v;  //足端速度在机身坐标系
     // std::cout << "leg v =" << dp_rel[0] << " " << dp_rel[1] << " " <<
     // dp_rel[2] << std::endl;
     Vec3<T> p_f = Rbod * p_rel;  //足端位置在世界坐标系中
