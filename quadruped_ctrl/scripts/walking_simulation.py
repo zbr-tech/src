@@ -33,7 +33,8 @@ motor_id_list = [0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14]
 init_new_pos = [0.0, -0.8, 1.6, 0.0, -0.8, 1.6, 0.0, -0.8, 1.6, 0.0, -0.8, 1.6,
                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 ###### add by shimizu
-skip_num =1
+skip_num =5
+position_control_mode = True
 
 class StructPointer(ctypes.Structure):
     _fields_ = [("eff", ctypes.c_double * 12)]
@@ -346,18 +347,17 @@ def run():
     
     # KP = 20
     if skip_count%skip_num== 0:
-    
+        # stamp_nsec = rospy.Time.now().to_nsec()
         tau = cpp_gait_ctrller.toque_calculator(convert_type(
         imu_data), convert_type(leg_data))
-        tau_val = [tau.contents.eff[i] for i in range(N_Motors)]
-
         joint_pointer = cpp_gait_ctrller.get_zebra_joint_control()
         for i in range(N_Motors):
             joint_control.position[i] = joint_pointer.contents.position[i]
             joint_control.velocity[i] = joint_pointer.contents.velocity[i]
-            joint_control.kp[i] = joint_pointer.contents.kp[i]/1000
-            joint_control.kd[i] = joint_pointer.contents.kd[i]/10
+            joint_control.kp[i] = joint_pointer.contents.kp[i]/100
+            joint_control.kd[i] = joint_pointer.contents.kd[i]/5
             joint_control.effort[i] = joint_pointer.contents.effort[i]
+        # print("t[ms]: ", (rospy.Time.now().to_nsec() - stamp_nsec) / 1000000)
     skip_count+=1
     # pub_zebra_ctrl.publish(joint_control)
     # print("rad")
@@ -378,19 +378,21 @@ def run():
     #                             jointIndices=motor_id_list,
     #                             controlMode=p.POSITION_CONTROL,
     #                             targetPositions=joint_control.position)
-    # p.setJointMotorControlArray(bodyUniqueId=boxId,
-    #                             jointIndices=motor_id_list,
-    #                             controlMode=p.TORQUE_CONTROL,
-    #                             forces=mcp_force)
-
+    
     ##########################
 
 
     # set tau to simulator
-    p.setJointMotorControlArray(bodyUniqueId=boxId,
+    if position_control_mode:
+        p.setJointMotorControlArray(bodyUniqueId=boxId,
                                 jointIndices=motor_id_list,
                                 controlMode=p.TORQUE_CONTROL,
-                                forces=tau.contents.eff)
+                                forces=mcp_force)
+    else:
+        p.setJointMotorControlArray(bodyUniqueId=boxId,
+                                    jointIndices=motor_id_list,
+                                    controlMode=p.TORQUE_CONTROL,
+                                    forces=tau.contents.eff)
 
     # reset visual cam
     # p.resetDebugVisualizerCamera(2.5, 45, -30, base_pos)
