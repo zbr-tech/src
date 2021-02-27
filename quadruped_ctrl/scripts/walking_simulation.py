@@ -33,7 +33,7 @@ motor_id_list = [0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14]
 init_new_pos = [0.0, -0.8, 1.6, 0.0, -0.8, 1.6, 0.0, -0.8, 1.6, 0.0, -0.8, 1.6,
                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 ###### add by shimizu
-skip_num =5
+skip_num =1
 position_control_mode = True
 
 class StructPointer(ctypes.Structure):
