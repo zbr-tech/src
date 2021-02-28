@@ -32,9 +32,6 @@ robot_height = 0.30
 motor_id_list = [0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14]
 init_new_pos = [0.0, -0.8, 1.6, 0.0, -0.8, 1.6, 0.0, -0.8, 1.6, 0.0, -0.8, 1.6,
                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-###### add by shimizu
-skip_num =1
-position_control_mode = True
 
 class StructPointer(ctypes.Structure):
     _fields_ = [("eff", ctypes.c_double * 12)]
@@ -43,6 +40,8 @@ class ZebraPointer(ctypes.Structure):
     _fields_ = [("position", ctypes.c_double * 12),("velocity", ctypes.c_double * 12),
     ("kp", ctypes.c_double * 12),("kd", ctypes.c_double * 12),
     ("effort", ctypes.c_double * 12)]
+
+
 
 def convert_type(input):
     ctypes_map = {int: ctypes.c_int,
@@ -586,6 +585,12 @@ if __name__ == '__main__':
     stand_kd = rospy.get_param('/simulation/stand_kd')
     joint_kp = rospy.get_param('/simulation/joint_kp')
     joint_kd = rospy.get_param('/simulation/joint_kd')
+
+    ### add by shimizu
+    skip_num =rospy.get_param('/communication/divide')
+    position_control_mode = rospy.get_param('/communication/use_position_control')
+    ###
+
     rospy.loginfo("lateralFriction = " + str(lateralFriction) + " spinningFriction = " + str(spinningFriction))
     rospy.loginfo(" freq = " + str(freq) + " PID = " + str([stand_kp, stand_kd, joint_kp, joint_kd]))
 

@@ -14,3 +14,15 @@ robot:
   stand_kd: 1.0
   joint_kp: 10.0
   joint_kd: 0.2
+### add by shimizu
+communication:
+  divide: 1
+  use_position_control: True
+mpc :
+  iterations_between_mpc: 13 ### mpc Hz = freq/(divide*this)
+  horizonLength: 14
+estimator:
+  dt: 0.002 ### = 1/freq * divide
+
+
+

@@ -10,14 +10,18 @@
 #include "Controllers/PositionVelocityEstimator.h"
 
 #include <fstream>
-
+#include <ros/ros.h>
 /*!
  * Initialize the state estimator
  */
 template <typename T>
-void LinearKFPositionVelocityEstimator<T>::setup() {
+void LinearKFPositionVelocityEstimator<T>::setup()
+{
   // T dt = this->_stateEstimatorData.parameters->controller_dt;
   T dt = 0.002;
+  ///add by shimizu
+  ros::param::get("/estimator/dt", dt);
+  ////
   _xhat.setZero();
   _ps.setZero();
   _vs.setZero();
@@ -63,7 +67,8 @@ LinearKFPositionVelocityEstimator<T>::LinearKFPositionVelocityEstimator() {}
  * Run state estimator
  */
 template <typename T>
-void LinearKFPositionVelocityEstimator<T>::run() {
+void LinearKFPositionVelocityEstimator<T>::run()
+{
   T process_noise_pimu = 0.02;
   T process_noise_vimu = 0.02;
   T process_noise_pfoot = 0.002;
@@ -112,23 +117,24 @@ void LinearKFPositionVelocityEstimator<T>::run() {
   p0 << _xhat[0], _xhat[1], _xhat[2];
   v0 << _xhat[3], _xhat[4], _xhat[5];
 
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 4; i++)
+  {
     int i1 = 3 * i;
-    Quadruped<T>& quadruped =
+    Quadruped<T> &quadruped =
         *(this->_stateEstimatorData.legControllerData->quadruped);
-    Vec3<T> ph = quadruped.getHipLocation(i);  // hip positions relative to CoM
+    Vec3<T> ph = quadruped.getHipLocation(i); // hip positions relative to CoM
 
     // hw_i->leg_controller->leg_datas[i].p;
-    Vec3<T> p_rel = ph + this->_stateEstimatorData.legControllerData[i].p;  //足端位置在机身坐标系中
+    Vec3<T> p_rel = ph + this->_stateEstimatorData.legControllerData[i].p; //足端位置在机身坐标系中
 
     // hw_i->leg_controller->leg_datas[i].v;
-    Vec3<T> dp_rel = this->_stateEstimatorData.legControllerData[i].v;  //足端速度在机身坐标系
+    Vec3<T> dp_rel = this->_stateEstimatorData.legControllerData[i].v; //足端速度在机身坐标系
     // std::cout << "leg v =" << dp_rel[0] << " " << dp_rel[1] << " " <<
     // dp_rel[2] << std::endl;
-    Vec3<T> p_f = Rbod * p_rel;  //足端位置在世界坐标系中
+    Vec3<T> p_f = Rbod * p_rel; //足端位置在世界坐标系中
     Vec3<T> dp_f =
         Rbod * (this->_stateEstimatorData.result->omegaBody.cross(p_rel) +
-                dp_rel);  //足端速度在世界坐标系中
+                dp_rel); //足端速度在世界坐标系中
 
     qindex = 6 + i1;
     rindex1 = i1;
@@ -140,9 +146,12 @@ void LinearKFPositionVelocityEstimator<T>::run() {
     // T trust_window = T(0.25);
     T trust_window = T(0.2);
 
-    if (phase < trust_window) {
+    if (phase < trust_window)
+    {
       trust = phase / trust_window;
-    } else if (phase > (T(1) - trust_window)) {
+    }
+    else if (phase > (T(1) - trust_window))
+    {
       trust = (T(1) - phase) / trust_window;
     }
     // T high_suspect_number(1000);
@@ -186,7 +195,8 @@ void LinearKFPositionVelocityEstimator<T>::run() {
   Eigen::Matrix<T, 18, 18> Pt = _P.transpose();
   _P = (_P + Pt) / T(2);
 
-  if (_P.block(0, 0, 2, 2).determinant() > T(0.000001)) {
+  if (_P.block(0, 0, 2, 2).determinant() > T(0.000001))
+  {
     _P.block(0, 2, 2, 16).setZero();
     _P.block(2, 0, 16, 2).setZero();
     _P.block(0, 0, 2, 2) /= T(10);
@@ -225,7 +235,8 @@ template class LinearKFPositionVelocityEstimator<double>;
  * Run cheater estimator to copy cheater state into state estimate
  */
 template <typename T>
-void CheaterPositionVelocityEstimator<T>::run() {
+void CheaterPositionVelocityEstimator<T>::run()
+{
   this->_stateEstimatorData.result->position =
       this->_stateEstimatorData.cheaterState->position.template cast<T>();
   this->_stateEstimatorData.result->vWorld =

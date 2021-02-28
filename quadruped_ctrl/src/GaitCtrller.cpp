@@ -1,14 +1,26 @@
 #include "GaitCtrller.h"
 #include <ros/ros.h>
-GaitCtrller::GaitCtrller(double freq, double* PIDParam) {
-  for (int i = 0; i < 4; i++) {
+GaitCtrller::GaitCtrller(double freq, double *PIDParam)
+{
+  for (int i = 0; i < 4; i++)
+  {
     ctrlParam(i) = PIDParam[i];
   }
-
+  //// add by shimizu
+  /////for ros param
+  int argc = 0;
+  char *argv[1];
+  ros::init(argc, argv, "rosparam");
+  ros::NodeHandle nh;
+  int iterations_between_mpc, horizonLength;
+  nh.getParam("/mpc/iterations_between_mpc", iterations_between_mpc);
+  nh.getParam("/mpc/horizonLength", horizonLength);
+  //////
   _gamepadCommand.resize(4);
   FloatingBaseModel<float> _model;
   // convexMPC = new ConvexMPCLocomotion(1.0 / freq, 13);
-  convexMPC = new ConvexMPCLocomotion(1.0 / freq, 13);
+  convexMPC = new ConvexMPCLocomotion(1.0 / freq, iterations_between_mpc, horizonLength);
+
   _quadruped = buildMiniCheetah<float>();
   _model = _quadruped.buildModel();
 
@@ -43,7 +55,8 @@ GaitCtrller::GaitCtrller(double freq, double* PIDParam) {
   std::cout << "finish init controller" << std::endl;
 }
 
-GaitCtrller::~GaitCtrller() {
+GaitCtrller::~GaitCtrller()
+{
   delete convexMPC;
   delete _legController;
   delete _stateEstimator;
@@ -51,7 +64,8 @@ GaitCtrller::~GaitCtrller() {
   delete safetyChecker;
 }
 
-void GaitCtrller::SetIMUData(double* imuData) {
+void GaitCtrller::SetIMUData(double *imuData)
+{
   _vectorNavData.accelerometer(0, 0) = imuData[0];
   _vectorNavData.accelerometer(1, 0) = imuData[1];
   _vectorNavData.accelerometer(2, 0) = imuData[2];
@@ -64,8 +78,10 @@ void GaitCtrller::SetIMUData(double* imuData) {
   _vectorNavData.gyro(2, 0) = imuData[9];
 }
 
-void GaitCtrller::SetLegData(double* motorData) {
-  for (int i = 0; i < 4; i++) {
+void GaitCtrller::SetLegData(double *motorData)
+{
+  for (int i = 0; i < 4; i++)
+  {
     _legdata.q_abad[i] = motorData[i * 3];
     _legdata.q_hip[i] = motorData[i * 3 + 1];
     _legdata.q_knee[i] = motorData[i * 3 + 2];
@@ -75,47 +91,61 @@ void GaitCtrller::SetLegData(double* motorData) {
   }
 }
 
-void GaitCtrller::PreWork(double* imuData, double* motorData) {
+void GaitCtrller::PreWork(double *imuData, double *motorData)
+{
   SetIMUData(imuData);
   SetLegData(motorData);
   _stateEstimator->run();
   _legController->updateData(&_legdata);
 }
 
-void GaitCtrller::SetGaitType(int gaitType) {
+void GaitCtrller::SetGaitType(int gaitType)
+{
   _gaitType = gaitType;
   std::cout << "set gait type to: " << _gaitType << std::endl;
 }
 
-void GaitCtrller::SetRobotMode(int mode) {
+void GaitCtrller::SetRobotMode(int mode)
+{
   _robotMode = mode;
   std::cout << "set robot mode to: " << _robotMode << std::endl;
 }
 
-void GaitCtrller::SetRobotVel(double* vel) {
-  if (abs(vel[0]) < 0.03) {
+void GaitCtrller::SetRobotVel(double *vel)
+{
+  if (abs(vel[0]) < 0.03)
+  {
     _gamepadCommand[0] = 0.0;
-  } else {
+  }
+  else
+  {
     _gamepadCommand[0] = vel[0] * 1.0;
   }
 
-  if (abs(vel[1]) < 0.03) {
+  if (abs(vel[1]) < 0.03)
+  {
     _gamepadCommand[1] = 0.0;
-  } else {
+  }
+  else
+  {
     _gamepadCommand[1] = vel[1] * 1.0;
   }
 
-  if (abs(vel[2]) < 0.03) {
+  if (abs(vel[2]) < 0.03)
+  {
     _gamepadCommand[2] = 0.0;
-  } else {
-  _gamepadCommand[2] = vel[2] * 1.0;
+  }
+  else
+  {
+    _gamepadCommand[2] = vel[2] * 1.0;
   }
   // std::cout << "set vel to: " << _gamepadCommand[0] << " " << _gamepadCommand[1]
   //           << " " << _gamepadCommand[2] << std::endl;
 }
 
-void GaitCtrller::ToqueCalculator(double* imuData, double* motorData,
-                                  double* effort) {
+void GaitCtrller::ToqueCalculator(double *imuData, double *motorData,
+                                  double *effort)
+{
   // std::vector<double> effort;
   // double effort[12];
   // set imu data
@@ -135,7 +165,8 @@ void GaitCtrller::ToqueCalculator(double* imuData, double* motorData,
   // }
   // std::cout << std::endl;
   // set motor data
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 4; i++)
+  {
     _legdata.q_abad[i] = motorData[i * 3];
     _legdata.q_hip[i] = motorData[i * 3 + 1];
     _legdata.q_knee[i] = motorData[i * 3 + 2];
@@ -159,19 +190,23 @@ void GaitCtrller::ToqueCalculator(double* imuData, double* motorData,
   _desiredStateCommand->convertToStateCommands(_gamepadCommand);
 
   //safety check
-  if(!safetyChecker->checkSafeOrientation(*_stateEstimator)){
+  if (!safetyChecker->checkSafeOrientation(*_stateEstimator))
+  {
     _safetyCheck = false;
     std::cout << "broken: Orientation Safety Ceck FAIL" << std::endl;
-
-  }else if (!safetyChecker->checkPDesFoot(_quadruped, *_legController)) {
+  }
+  else if (!safetyChecker->checkPDesFoot(_quadruped, *_legController))
+  {
     _safetyCheck = false;
     std::cout << "broken: Foot Position Safety Ceck FAIL" << std::endl;
-
-  }else if (!safetyChecker->checkForceFeedForward(*_legController)) {
+  }
+  else if (!safetyChecker->checkForceFeedForward(*_legController))
+  {
     _safetyCheck = false;
     std::cout << "broken: Force FeedForward Safety Ceck FAIL" << std::endl;
-
-  }else if (!safetyChecker->checkJointLimit(*_legController)) {
+  }
+  else if (!safetyChecker->checkJointLimit(*_legController))
+  {
     _safetyCheck = false;
     std::cout << "broken: Joint Limit Safety Ceck FAIL" << std::endl;
   }
@@ -182,20 +217,24 @@ void GaitCtrller::ToqueCalculator(double* imuData, double* motorData,
   _legController->updateCommand(&legcommand, ctrlParam);
 
   // effort.resize(12);
-  if(_safetyCheck){
-    for (int i = 0; i < 4; i++) {
+  if (_safetyCheck)
+  {
+    for (int i = 0; i < 4; i++)
+    {
       effort[i * 3] = legcommand.tau_abad_ff[i];
       effort[i * 3 + 1] = legcommand.tau_hip_ff[i];
       effort[i * 3 + 2] = legcommand.tau_knee_ff[i];
     }
-  }else{
-    for (int i = 0; i < 4; i++) {
+  }
+  else
+  {
+    for (int i = 0; i < 4; i++)
+    {
       effort[i * 3] = 0.0;
       effort[i * 3 + 1] = 0.0;
       effort[i * 3 + 2] = 0.0;
     }
   }
-  
 
   // return effort;
 }
